@@ -500,16 +500,31 @@ public class AddressBook {
      * @return feedback display message for the operation result
      */
     private static String executeDeletePerson(String commandArgs) {
-        if (!isDeletePersonIndexValid(commandArgs)) {
-            return getMessageForInvalidCommandInput(COMMAND_DELETE_WORD, getUsageInfoForDeleteCommand());
+        String[] targetInModel;
+        if (isNumeric(commandArgs)) {
+            if (!isDeletePersonIndexValid(commandArgs)) {
+                return getMessageForInvalidCommandInput(COMMAND_DELETE_WORD, getUsageInfoForDeleteCommand());
+            }
+            final int targetVisibleIndex = extractTargetIndexFromDeletePersonArgs(commandArgs);
+            if (!isDisplayIndexValidForLastPersonListingView(targetVisibleIndex)) {
+                return MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
+            }
+            targetInModel = getPersonByLastVisibleIndex(targetVisibleIndex);
         }
-        final int targetVisibleIndex = extractTargetIndexFromDeletePersonArgs(commandArgs);
-        if (!isDisplayIndexValidForLastPersonListingView(targetVisibleIndex)) {
-            return MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
+        else {
+            // try decoding a person from the raw args
+            final Optional<String[]> decodeResult = decodePersonFromString(commandArgs);
+
+            // checks if args are valid (decode result will not be present if the person is invalid)
+            if (!decodeResult.isPresent()) {
+                return getMessageForInvalidCommandInput(COMMAND_DELETE_WORD, getUsageInfoForDeleteCommand());
+            }
+
+            targetInModel = decodeResult.get();
         }
-        final String[] targetInModel = getPersonByLastVisibleIndex(targetVisibleIndex);
+
         return deletePersonFromAddressBook(targetInModel) ? getMessageForSuccessfulDelete(targetInModel) // success
-                                                          : MESSAGE_PERSON_NOT_IN_ADDRESSBOOK; // not found
+                : MESSAGE_PERSON_NOT_IN_ADDRESSBOOK; // not found
     }
 
     /**
@@ -1162,6 +1177,17 @@ public class AddressBook {
      */
     private static ArrayList<String> splitByWhitespace(String toSplit) {
         return new ArrayList<>(Arrays.asList(toSplit.trim().split("\\s+")));
+    }
+
+    /**
+     * Checks whether a string has only numbers in it
+     */
+    public static boolean isNumeric(String str) {
+        for (char c : str.toCharArray()) {
+            if (!Character.isDigit(c))
+                return false;
+        }
+        return true;
     }
 
 }
